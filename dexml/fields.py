@@ -8,6 +8,7 @@ dexml.fields:  basic field type definitions for dexml
 import dexml
 import random
 from xml.sax.saxutils import escape, quoteattr
+from dexml.compat import iteritems, string_types, text_type
 
 #  Global counter tracking the order in which fields are declared.
 _order_counter = 0
@@ -113,7 +114,7 @@ class Field(object):
     def _check_tagname(self,node,tagname):
         if node.nodeType != node.ELEMENT_NODE:
             return False
-        if isinstance(tagname,basestring):
+        if isinstance(tagname,string_types):
             if node.localName != tagname:
                 return False
             if node.namespaceURI:
@@ -179,7 +180,7 @@ class Value(Field):
         if self.__dict__["attrname"]:
             return None
         tagname = self.__dict__['tagname']
-        if tagname and not isinstance(tagname,(basestring,tuple)):
+        if tagname and not isinstance(tagname,(string_types,tuple)):
             tagname = self.field_name
         return tagname
     def _set_tagname(self,tagname):
@@ -198,7 +199,7 @@ class Value(Field):
             return attrs
         unused = []
         attrname = self.attrname
-        if isinstance(attrname,basestring):
+        if isinstance(attrname,string_types):
             ns = None
         else:
             (ns,attrname) = attrname
@@ -232,7 +233,7 @@ class Value(Field):
     def render_attributes(self,obj,val,nsmap):
         if val is not None and val is not self.default and self.attrname:
             qaval = quoteattr(self.render_value(val))
-            if isinstance(self.attrname,basestring):
+            if isinstance(self.attrname,string_types):
                 yield '%s=%s' % (self.attrname,qaval,)
             else:
                 m_meta = self.model_class.meta
@@ -243,7 +244,7 @@ class Value(Field):
                 elif ns is None:
                     yield '%s=%s' % (nm,qaval,)
                 else:
-                    for (p,n) in nsmap.iteritems():
+                    for (p,n) in iteritems(nsmap):
                         if ns == n[0]:
                             prefix = p
                             break
@@ -263,7 +264,7 @@ class Value(Field):
                 attrs = ""
                 #  By default, tag values inherit the namespace of their
                 #  containing model class.
-                if isinstance(self.tagname,basestring):
+                if isinstance(self.tagname,string_types):
                     prefix = self.model_class.meta.namespace_prefix
                     localName = self.tagname
                 else:
@@ -279,7 +280,7 @@ class Value(Field):
                     elif ns == m_meta.namespace:
                         prefix = m_meta.namespace_prefix
                     else:
-                        for (p,n) in nsmap.iteritems():
+                        for (p,n) in iteritems(nsmap):
                             if ns == n[0]:
                                 prefix = p
                                 break
@@ -307,7 +308,7 @@ class Value(Field):
         return val
 
     def render_value(self,val):
-        if not isinstance(val, basestring):
+        if not isinstance(val, string_types):
             val = str(val)
         return val
 
@@ -440,7 +441,7 @@ class Model(Field):
         if typ is None:
             typ = self.field_name
         typeclass = None
-        if isinstance(typ,basestring):
+        if isinstance(typ,string_types):
             if self.model_class.meta.namespace:
                 ns = self.model_class.meta.namespace
                 typeclass = dexml.ModelMetaclass.find_class(typ,ns)
@@ -480,7 +481,7 @@ class Model(Field):
 class List(Field):
     """Field subclass representing a list of fields.
 
-    This field corresponds to a homogenous list of other fields.  You would
+    This field corresponds to a homogeneous list of other fields.  You would
     declare it like so:
 
       class MyModel(Model):
@@ -597,7 +598,7 @@ class List(Field):
         chunks = child_chunks()
         #  Render each chunk, but suppress the wrapper tag if there's no data.
         try:
-            data = chunks.next()
+            data = next(chunks)
         except StopIteration:
             if self.tagname and self.required:
                 yield "<%s />" % (self.tagname,)
@@ -780,7 +781,7 @@ class Choice(Field):
         for field in fields:
             if isinstance(field,Model):
                 real_fields.append(field)
-            elif isinstance(field,basestring):
+            elif isinstance(field,string_types):
                 real_fields.append(Model(field))
             else:
                 raise ValueError("only Model fields are allowed within a Choice field")
@@ -815,8 +816,8 @@ class XmlNode(Field):
         encoding = None
 
     def __set__(self,instance,value):
-        if isinstance(value,basestring):
-            if isinstance(value,unicode) and self.encoding:
+        if isinstance(value,string_types):
+            if isinstance(value,text_type) and self.encoding:
                 value = value.encode(self.encoding)
             doc = dexml.minidom.parseString(value)
             value = doc.documentElement

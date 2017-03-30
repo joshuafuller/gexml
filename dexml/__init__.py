@@ -74,20 +74,8 @@ import sys
 import re
 import copy
 from xml.dom import minidom
-
+from dexml.compat import with_metaclass, iteritems, text_type
 from dexml import fields
-
-
-if sys.version_info >= (3,):
-    str = str                  #pragma: no cover
-    unicode = str              #pragma: no cover
-    bytes = bytes              #pragma: no cover
-    basestring = (str,bytes)   #pragma: no cover
-else:
-    str = str                  #pragma: no cover
-    unicode = unicode          #pragma: no cover
-    bytes = str                #pragma: no cover
-    basestring = basestring    #pragma: no cover
 
 
 class Error(Exception):
@@ -205,13 +193,13 @@ class ModelMetaclass(type):
                     field.model_class = cls
                     base_fields[field.field_name] = field
         cls_fields = []
-        for (name,value) in attrs.iteritems():
+        for (name,value) in iteritems(attrs):
             if isinstance(value,fields.Field):
                 base_fields.pop(name,None)
                 value.field_name = name
                 value.model_class = cls
                 cls_fields.append(value)
-        cls._fields = base_fields.values() + cls_fields
+        cls._fields = [x for x in base_fields.values()] + cls_fields
         cls._fields.sort(key=lambda f: f._order_counter)
         #  Register the new class so we can find it by name later on
         tagname = (cls.meta.namespace,cls.meta.tagname)
@@ -238,7 +226,7 @@ class ModelMetaclass(type):
 _XML_ENCODING_RE = re.compile("<\\?xml [^>]*encoding=[\"']([a-zA-Z0-9\\.\\-\\_]+)[\"'][^>]*?>")
 
 
-class Model(object):
+class Model(with_metaclass(ModelMetaclass, object)):
     """Base class for dexml Model objects.
 
     Subclasses of Model represent a concrete type of object that can parsed 
@@ -263,7 +251,6 @@ class Model(object):
     'fields' submodule for available field types.
     """
 
-    __metaclass__ = ModelMetaclass
     _fields = []
 
     def __init__(self,**kwds):
@@ -447,7 +434,7 @@ class Model(object):
                 yield '<?xml version="1.0" ?>'
         if encoding:
             for data in self._render(nsmap):
-                if isinstance(data,unicode):
+                if isinstance(data,text_type):
                     data = data.encode(encoding)
                 yield data
         else:
@@ -489,7 +476,7 @@ class Model(object):
         #  Render each child node
         children = self._render_children(used_fields,nsmap)
         try:
-            first_child = children.next()
+            first_child = next(children)
         except StopIteration:
             yield "<%s />" % (" ".join(open_tag_contents),)
         else:
@@ -511,7 +498,7 @@ class Model(object):
             val = getattr(self,f.field_name)
             datas = iter(f.render_attributes(self,val,nsmap))
             try:
-                data = datas.next()
+                data = next(datas)
             except StopIteration:
                 pass
             else:
@@ -525,7 +512,7 @@ class Model(object):
             val = getattr(self,f.field_name)
             datas = iter(f.render_children(self,val,nsmap))
             try:
-                data = datas.next()
+                data = next(datas)
             except StopIteration:
                 pass
             else:
@@ -543,9 +530,9 @@ class Model(object):
             if isinstance(xml,bytes):
                 try:
                     xml = minidom.parseString(xml)
-                except Exception, e:
+                except Exception as e:
                     raise XmlError(e)
-            elif isinstance(xml,unicode):
+            elif isinstance(xml,text_type):
                 try:
                     #  Try to grab the "encoding" attribute from the XML.
                     #  It probably won't exist, so default to utf8.
@@ -555,12 +542,12 @@ class Model(object):
                     else:
                         encoding = encoding.group(1)
                     xml = minidom.parseString(xml.encode(encoding))
-                except Exception, e:
+                except Exception as e:
                     raise XmlError(e)
             elif hasattr(xml,"read"):
                 try:
                     xml = minidom.parse(xml)
-                except Exception, e:
+                except Exception as e:
                     raise XmlError(e)
             else:
                 raise ValueError("Can't convert that to an XML DOM node")
@@ -584,7 +571,7 @@ class Model(object):
             err = err % (cls.__name__,)
             raise ParseError(err)
         if cls.meta.case_sensitive:
-            if node.localName != cls.meta.tagname:
+            if cls.meta.tagname and node.localName != cls.meta.tagname:
                 err = "Class '%s' got tag '%s' (expected '%s')"
                 err = err % (cls.__name__,node.localName,
                              cls.meta.tagname)
