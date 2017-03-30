@@ -5,10 +5,10 @@ dexml.fields:  basic field type definitions for dexml
 
 """
 
-import dexml
+import dexml2
 import random
 from xml.sax.saxutils import escape, quoteattr
-from dexml.compat import iteritems, string_types, text_type
+from dexml2.compat import iteritems, string_types, text_type
 
 #  Global counter tracking the order in which fields are declared.
 _order_counter = 0
@@ -85,7 +85,7 @@ class Field(object):
 
         Any other return value will be taken as a parse error.
         """
-        return dexml.PARSE_SKIP
+        return dexml2.PARSE_SKIP
 
     def parse_done(self,obj):
         """Finalize parsing for the given object.
@@ -215,20 +215,20 @@ class Value(Field):
 
     def parse_child_node(self,obj,node):
         if not self.tagname:
-            return dexml.PARSE_SKIP
+            return dexml2.PARSE_SKIP
         if self.tagname == ".":
             node = node.parentNode
         else:
             if not self._check_tagname(node,self.tagname):
-                return dexml.PARSE_SKIP
+                return dexml2.PARSE_SKIP
         vals = []
         #  Merge all text nodes into a single value
         for child in node.childNodes:
             if child.nodeType not in (child.TEXT_NODE,child.CDATA_SECTION_NODE):
-                raise dexml.ParseError("non-text value node")
+                raise dexml2.ParseError("non-text value node")
             vals.append(child.nodeValue)
         self.__set__(obj,self.parse_value("".join(vals)))
-        return dexml.PARSE_DONE
+        return dexml2.PARSE_DONE
 
     def render_attributes(self,obj,val,nsmap):
         if val is not None and val is not self.default and self.attrname:
@@ -437,7 +437,7 @@ class Model(Field):
  
     def _load_typeclass(self):
         typ = self.type
-        if isinstance(typ,dexml.ModelMetaclass):
+        if isinstance(typ, dexml2.ModelMetaclass):
             return typ
         if typ is None:
             typ = self.field_name
@@ -445,16 +445,16 @@ class Model(Field):
         if isinstance(typ,string_types):
             if self.model_class.meta.namespace:
                 ns = self.model_class.meta.namespace
-                typeclass = dexml.ModelMetaclass.find_class(typ,ns)
+                typeclass = dexml2.ModelMetaclass.find_class(typ, ns)
             if typeclass is None:
-                typeclass = dexml.ModelMetaclass.find_class(typ,None)
+                typeclass = dexml2.ModelMetaclass.find_class(typ, None)
             if typeclass is None:
                 raise ValueError("Unknown Model class: %s" % (typ,))
         else:
             (ns,typ) = typ
-            if isinstance(typ,dexml.ModelMetaclass):
+            if isinstance(typ, dexml2.ModelMetaclass):
                 return typ
-            typeclass = dexml.ModelMetaclass.find_class(typ,ns)
+            typeclass = dexml2.ModelMetaclass.find_class(typ, ns)
             if typeclass is None:
                 raise ValueError("Unknown Model class: (%s,%s)" % (ns,typ))
         return typeclass
@@ -463,12 +463,12 @@ class Model(Field):
         typeclass = self.typeclass
         try:
             typeclass.validate_xml_node(node, self.tagname)
-        except dexml.ParseError:
-            return dexml.PARSE_SKIP
+        except dexml2.ParseError:
+            return dexml2.PARSE_SKIP
         else:
             inst = typeclass.parse(node, self.tagname)
             self.__set__(obj,inst)
-            return dexml.PARSE_DONE
+            return dexml2.PARSE_DONE
 
     def render_attributes(self,obj,val,nsmap):
         return []
@@ -557,31 +557,31 @@ class List(Field):
             val = super(List,self).__get__(obj)
             if val is None:
                 if node.nodeType != node.ELEMENT_NODE:
-                    return dexml.PARSE_SKIP
+                    return dexml2.PARSE_SKIP
                 elif node.tagName == self.tagname:
                     self.__set__(obj,[])
-                    return dexml.PARSE_CHILDREN
+                    return dexml2.PARSE_CHILDREN
                 else:
-                    return dexml.PARSE_SKIP
+                    return dexml2.PARSE_SKIP
         #  Now we just parse each child node.
         tmpobj = _AttrBucket()
         res = self.field.parse_child_node(tmpobj,node)
-        if res is dexml.PARSE_MORE:
+        if res is dexml2.PARSE_MORE:
             raise ValueError("items in a list cannot return PARSE_MORE")
-        if res is dexml.PARSE_DONE:
+        if res is dexml2.PARSE_DONE:
             items = self.__get__(obj)
             val = getattr(tmpobj,self.field_name)
             items.append(val)
-            return dexml.PARSE_MORE
+            return dexml2.PARSE_MORE
         else:
-            return dexml.PARSE_SKIP
+            return dexml2.PARSE_SKIP
 
     def parse_done(self,obj):
         items = self.__get__(obj)
         if self.minlength is not None and len(items) < self.minlength:
-            raise dexml.ParseError("Field '%s': not enough items" % (self.field_name,))
+            raise dexml2.ParseError("Field '%s': not enough items" % (self.field_name,))
         if self.maxlength is not None and len(items) > self.maxlength:
-            raise dexml.ParseError("Field '%s': too many items" % (self.field_name,))
+            raise dexml2.ParseError("Field '%s': too many items" % (self.field_name,))
 
     def render_children(self,obj,items,nsmap):
         #  Create a generator that yields child data chunks, and validates
@@ -593,12 +593,12 @@ class List(Field):
                 num_items += 1
                 if self.maxlength is not None and num_items > self.maxlength:
                     msg = "Field '%s': too many items" % (self.field_name,)
-                    raise dexml.RenderError(msg)
+                    raise dexml2.RenderError(msg)
                 for data in self.field.render_children(obj,item,nsmap):
                     yield data
             if self.minlength is not None and num_items < self.minlength:
                 msg = "Field '%s': not enough items" % (self.field_name,)
-                raise dexml.RenderError(msg)
+                raise dexml2.RenderError(msg)
         chunks = child_chunks()
         #  Render each chunk, but suppress the wrapper tag if there's no data.
         try:
@@ -727,43 +727,43 @@ class Dict(Field):
             val = super(Dict,self).__get__(obj)
             if val is None:
                 if node.nodeType != node.ELEMENT_NODE:
-                    return dexml.PARSE_SKIP
+                    return dexml2.PARSE_SKIP
                 elif node.tagName == self.tagname:
                     self.__get__(obj)
-                    return dexml.PARSE_CHILDREN
+                    return dexml2.PARSE_CHILDREN
                 else:
-                    return dexml.PARSE_SKIP
+                    return dexml2.PARSE_SKIP
         #  Now we just parse each child node.
         tmpobj = _AttrBucket()
         res = self.field.parse_child_node(tmpobj, node)
-        if res is dexml.PARSE_MORE:
+        if res is dexml2.PARSE_MORE:
             raise ValueError("items in a dict cannot return PARSE_MORE")
-        if res is dexml.PARSE_DONE:
+        if res is dexml2.PARSE_DONE:
             items = self.__get__(obj)
             val = getattr(tmpobj, self.field_name)
             try:
                 key = getattr(val, self.key)
             except AttributeError:
-                raise dexml.ParseError("Key field '%s' required but not found in dict value" % (self.key, ))
+                raise dexml2.ParseError("Key field '%s' required but not found in dict value" % (self.key,))
             if self.unique and key in items:
-                raise dexml.ParseError("Key '%s' already exists in dict" % (key,))
+                raise dexml2.ParseError("Key '%s' already exists in dict" % (key,))
             items[key] = val
-            return dexml.PARSE_MORE
+            return dexml2.PARSE_MORE
         else:
-            return dexml.PARSE_SKIP
+            return dexml2.PARSE_SKIP
 
     def parse_done(self, obj):
         items = self.__get__(obj)
         if self.minlength is not None and len(items) < self.minlength:
-            raise dexml.ParseError("Field '%s': not enough items" % (self.field_name,))
+            raise dexml2.ParseError("Field '%s': not enough items" % (self.field_name,))
         if self.maxlength is not None and len(items) > self.maxlength:
-            raise dexml.ParseError("Field '%s': too many items" % (self.field_name,))
+            raise dexml2.ParseError("Field '%s': too many items" % (self.field_name,))
 
     def render_children(self, obj, items, nsmap):
         if self.minlength is not None and len(items) < self.minlength:
-            raise dexml.RenderError("Field '%s': not enough items" % (self.field_name,))
+            raise dexml2.RenderError("Field '%s': not enough items" % (self.field_name,))
         if self.maxlength is not None and len(items) > self.maxlength:
-            raise dexml.RenderError("too many items")
+            raise dexml2.RenderError("too many items")
         if self.tagname:
             children = "".join(data for item in items.values() for data in self.field.render_children(obj,item,nsmap))
             if not children:
@@ -800,17 +800,17 @@ class Choice(Field):
             field.field_name = self.field_name
             field.model_class = self.model_class
             res = field.parse_child_node(obj,node)
-            if res is dexml.PARSE_MORE:
+            if res is dexml2.PARSE_MORE:
                 raise ValueError("items in a Choice cannot return PARSE_MORE")
-            if res is dexml.PARSE_DONE:
-                return dexml.PARSE_DONE
+            if res is dexml2.PARSE_DONE:
+                return dexml2.PARSE_DONE
         else:
-            return dexml.PARSE_SKIP
+            return dexml2.PARSE_SKIP
 
     def render_children(self,obj,item,nsmap):
         if item is None:
             if self.required:
-                raise dexml.RenderError("Field '%s': required field is missing" % (self.field_name,))
+                raise dexml2.RenderError("Field '%s': required field is missing" % (self.field_name,))
         else:
             for data in item._render(nsmap=nsmap):
                 yield data
@@ -826,7 +826,7 @@ class XmlNode(Field):
         if isinstance(value,string_types):
             if isinstance(value,text_type) and self.encoding:
                 value = value.encode(self.encoding)
-            doc = dexml.minidom.parseString(value)
+            doc = dexml2.minidom.parseString(value)
             value = doc.documentElement
         if value is not None and value.namespaceURI is not None:
             nsattr = "xmlns"
@@ -838,8 +838,8 @@ class XmlNode(Field):
     def parse_child_node(self,obj,node):
         if self.tagname is None or self._check_tagname(node,self.tagname):
             self.__set__(obj,node)
-            return dexml.PARSE_DONE
-        return dexml.PARSE_SKIP
+            return dexml2.PARSE_DONE
+        return dexml2.PARSE_SKIP
 
     @classmethod
     def render_children(cls,obj,val,nsmap):

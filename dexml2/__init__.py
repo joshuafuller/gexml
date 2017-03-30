@@ -14,9 +14,9 @@ and lets you capture that as cleanly as possible.  Loosely inspired by Django's
 ORM, you write simple class definitions to define the expected structure of
 your XML document.  Like so::
 
-  >>> import dexml
-  >>> from dexml import fields
-  >>> class Person(dexml.Model):
+  >>> import dexml2
+  >>> from dexml2 import fields
+  >>> class Person(dexml2.Model):
   ...   name = fields.String()
   ...   age = fields.Integer(tagname='age')
 
@@ -43,7 +43,7 @@ Malformed documents will raise a ParseError::
 
 Of course, it gets more interesting when you nest Model definitions, like this::
 
-  >>> class Group(dexml.Model):
+  >>> class Group(dexml2.Model):
   ...   name = fields.String(attrname="name")
   ...   members = fields.List(Person)
   ...
@@ -65,17 +65,16 @@ classes for more details:
 
 __ver_major__ = 0
 __ver_minor__ = 5
-__ver_patch__ = 1
+__ver_patch__ = 2
 __ver_sub__ = ""
 __version__ = "%d.%d.%d%s" % (__ver_major__,__ver_minor__,__ver_patch__,__ver_sub__)
 
 
-import sys
 import re
 import copy
 from xml.dom import minidom
-from dexml.compat import with_metaclass, iteritems, text_type
-from dexml import fields
+from dexml2.compat import with_metaclass, iteritems, text_type
+from dexml2 import fields
 
 
 class Error(Exception):

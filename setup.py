@@ -19,17 +19,17 @@ except ImportError:
         raise RuntimeError("python3 support requires setuptools")
     from distutils.core import setup
 else:
-    setup_kwds["test_suite"] = "dexml.test"
+    setup_kwds["test_suite"] = "dexml2.test"
     if sys.version_info > (3,):
-        setup_kwds["use_2to3"] = True
+        setup_kwds["use_2to3"] = False
 
 
 #  Extract the docstring and version declaration from the module.
 #  To avoid errors due to missing dependencies or bad python versions,
 #  we explicitly read the file contents up to the end of the version
-#  delcaration, then exec it ourselves.
+#  declaration, then exec it ourselves.
 info = {}
-src = open("dexml/__init__.py")
+src = open("dexml2/__init__.py")
 lines = []
 for ln in src:
     lines.append(ln)
@@ -42,13 +42,13 @@ for ln in src:
 exec("".join(lines),info)
 
 
-NAME = "dexml"
+NAME = "dexml2"
 VERSION = info["__version__"]
 DESCRIPTION = "a dead-simple Object-XML mapper for Python"
 LONG_DESC = info["__doc__"]
-AUTHOR = "Ryan Kelly"
-AUTHOR_EMAIL = "ryan@rfk.id.au"
-URL="http://packages.python.org/dexml"
+AUTHOR = "Mike Nelson"
+AUTHOR_EMAIL = "mike@realrunners.com"
+URL="http://packages.python.org/dexml2"
 LICENSE = "MIT"
 KEYWORDS = "xml"
 CLASSIFIERS = [
@@ -59,6 +59,8 @@ CLASSIFIERS = [
     "Programming Language :: Python :: 2.7",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.2",
+    "Programming Language :: Python :: 3.4",
+    "Programming Language :: Python :: 3.6",
     "License :: OSI Approved",
     "License :: OSI Approved :: MIT License",
     "Development Status :: 5 - Production/Stable",
@@ -77,7 +79,7 @@ setup(name=NAME,
       long_description=LONG_DESC,
       license=LICENSE,
       keywords=KEYWORDS,
-      packages=["dexml"],
+      packages=[NAME],
       classifiers=CLASSIFIERS,
       **setup_kwds
      )

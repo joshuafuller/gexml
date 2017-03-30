@@ -1,6 +1,6 @@
 
 
-dexml:  a dead-simple Object-XML mapper for Python
+dexml2:  a dead-simple Object-XML mapper for Python
 ==================================================
 
 Let's face it: xml is a fact of modern life.  I'd even go so far as to say
@@ -14,9 +14,9 @@ and lets you capture that as cleanly as possible.  Loosely inspired by Django's
 ORM, you write simple class definitions to define the expected structure of
 your XML document.  Like so::
 
-  >>> import dexml
-  >>> from dexml import fields
-  >>> class Person(dexml.Model):
+  >>> import dexml2
+  >>> from dexml2 import fields
+  >>> class Person(dexml2.Model):
   ...   name = fields.String()
   ...   age = fields.Integer(tagname='age')
 
@@ -43,7 +43,7 @@ Malformed documents will raise a ParseError::
 
 Of course, it gets more interesting when you nest Model definitions, like this::
 
-  >>> class Group(dexml.Model):
+  >>> class Group(dexml2.Model):
   ...   name = fields.String(attrname="name")
   ...   members = fields.List(Person)
   ...
