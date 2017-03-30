@@ -1,6 +1,6 @@
 """
 
-dexml:  a dead-simple Object-XML mapper for Python
+dexml2:  a dead-simple Object-XML mapper for Python
 ==================================================
 
 Let's face it: xml is a fact of modern life.  I'd even go so far as to say
