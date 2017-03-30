@@ -266,7 +266,7 @@ class Model(with_metaclass(ModelMetaclass, object)):
                 pass
 
     @classmethod
-    def parse(cls,xml):
+    def parse(cls,xml,tagname=None):
         """Produce an instance of this model from some xml.
 
         The given xml can be a string, a readable file-like object, or
@@ -274,7 +274,7 @@ class Model(with_metaclass(ModelMetaclass, object)):
         """
         self = cls()
         node = self._make_xml_node(xml)
-        self.validate_xml_node(node)
+        self.validate_xml_node(node,tagname)
         #  Keep track of fields that have successfully parsed something
         fields_found = []
         #  Try to consume all the node's attributes
@@ -441,10 +441,12 @@ class Model(with_metaclass(ModelMetaclass, object)):
             for data in self._render(nsmap):
                 yield data
 
-    def _render(self,nsmap):
+    def _render(self,nsmap,tagname=None):
         """Generator rendering this model as an XML fragment."""
         #  Determine opening and closing tags
         pushed_ns = False
+        if not tagname:
+            tagname = self.meta.tagname
         if self.meta.namespace:
             namespace = self.meta.namespace
             prefix = self.meta.namespace_prefix
@@ -454,7 +456,7 @@ class Model(with_metaclass(ModelMetaclass, object)):
                 cur_ns = []
                 nsmap[prefix] = cur_ns
             if prefix:
-                tagname = "%s:%s" % (prefix,self.meta.tagname)
+                tagname = "%s:%s" % (prefix,tagname)
                 open_tag_contents = [tagname]
                 if not cur_ns or cur_ns[0] != namespace:
                     cur_ns.insert(0,namespace)
@@ -462,15 +464,15 @@ class Model(with_metaclass(ModelMetaclass, object)):
                     open_tag_contents.append('xmlns:%s="%s"'%(prefix,namespace))
                 close_tag_contents = tagname
             else:
-                open_tag_contents = [self.meta.tagname]
+                open_tag_contents = [tagname]
                 if not cur_ns or cur_ns[0] != namespace:
                     cur_ns.insert(0,namespace)
                     pushed_ns = True
                     open_tag_contents.append('xmlns="%s"'%(namespace,))
-                close_tag_contents = self.meta.tagname
+                close_tag_contents = tagname
         else:
-            open_tag_contents = [self.meta.tagname] 
-            close_tag_contents = self.meta.tagname
+            open_tag_contents = [tagname]
+            close_tag_contents = tagname
         used_fields = set()
         open_tag_contents.extend(self._render_attributes(used_fields,nsmap))
         #  Render each child node
@@ -560,7 +562,7 @@ class Model(with_metaclass(ModelMetaclass, object)):
         return node
 
     @classmethod
-    def validate_xml_node(cls,node):
+    def validate_xml_node(cls,node,tagname=None):
         """Check that the given xml node is valid for this object.
 
         Here 'valid' means that it is the right tag, in the right
@@ -571,13 +573,14 @@ class Model(with_metaclass(ModelMetaclass, object)):
             err = err % (cls.__name__,)
             raise ParseError(err)
         if cls.meta.case_sensitive:
-            if cls.meta.tagname and node.localName != cls.meta.tagname:
+            if not (cls.meta.tagname and node.localName == cls.meta.tagname) and not (tagname and tagname == node.localName):
                 err = "Class '%s' got tag '%s' (expected '%s')"
                 err = err % (cls.__name__,node.localName,
                              cls.meta.tagname)
                 raise ParseError(err)
         else:
-            if node.localName.lower() != cls.meta.tagname.lower():
+            if not (node.localName.lower() == cls.meta.tagname.lower()) and not \
+                    (tagname and tagname.lower() == node.localName.lower()):
                 err = "Class '%s' got tag '%s' (expected '%s')"
                 err = err % (cls.__name__,node.localName,
                              cls.meta.tagname)

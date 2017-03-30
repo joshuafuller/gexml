@@ -410,6 +410,7 @@ class Model(Field):
 
     def __init__(self,type=None,**kwds):
         kwds["type"] = type
+        self.tagname = kwds.get('tagname', None)
         super(Model,self).__init__(**kwds)
 
     def _get_type(self):
@@ -461,11 +462,11 @@ class Model(Field):
     def parse_child_node(self,obj,node):
         typeclass = self.typeclass
         try:
-            typeclass.validate_xml_node(node)
+            typeclass.validate_xml_node(node, self.tagname)
         except dexml.ParseError:
             return dexml.PARSE_SKIP
         else:
-            inst = typeclass.parse(node)
+            inst = typeclass.parse(node, self.tagname)
             self.__set__(obj,inst)
             return dexml.PARSE_DONE
 
@@ -474,7 +475,7 @@ class Model(Field):
 
     def render_children(self,obj,val,nsmap):
         if val is not None:
-            for data in val._render(nsmap):
+            for data in val._render(nsmap, self.tagname):
                 yield data
 
 
@@ -520,7 +521,10 @@ class List(Field):
         if isinstance(field,Field):
             kwds["field"] = field
         else:
-            kwds["field"] = Model(field,**kwds)
+            model_kwds = kwds.copy()
+            if 'tagname' in model_kwds:
+                model_kwds.pop('tagname')
+            kwds["field"] = Model(field,**model_kwds)
         super(List,self).__init__(**kwds)
         if not self.minlength and not self.tagname:
             self.required = False
@@ -678,7 +682,10 @@ class Dict(Field):
         if isinstance(field, Field):
             kwds["field"] = field
         else:
-            kwds["field"] = Model(field, **kwds)
+            model_kwds = kwds.copy()
+            if 'tagname' in model_kwds:
+                model_kwds.pop('tagname')
+            kwds["field"] = Model(field, **model_kwds)
         super(Dict, self).__init__(**kwds)
         if not self.minlength and not self.tagname:
             self.required = False

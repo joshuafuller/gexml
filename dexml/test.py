@@ -1093,3 +1093,14 @@ class TestListField(unittest.TestCase):
         o = obj()
         o.fs.append("s1")
         self.assertEqual(o.render(fragment=True), "<obj><val>s1</val></obj>")
+
+    def test_model_field_tagname(self):
+        class FF(self.F):
+            pass
+        class obj(dexml.Model):
+            fs = fields.Model(FF, tagname="subFF")
+
+        o = obj()
+        o.fs = FF(name="N1")
+        self.assertEqual(o.render(fragment=True), "<obj><subFF><name>N1</name></subFF></obj>")
+
