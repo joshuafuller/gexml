@@ -10,7 +10,7 @@ import dexml2
 import random
 from xml.sax.saxutils import escape, quoteattr
 from dexml2.compat import iteritems, string_types, text_type
-from utils import strptime_ISO_8601, ISO_8601_UTC
+from dexml2.utils import strptime_ISO_8601, ISO_8601_UTC
 
 #  Global counter tracking the order in which fields are declared.
 _order_counter = 0
