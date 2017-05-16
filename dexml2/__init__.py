@@ -396,7 +396,7 @@ class Model(with_metaclass(ModelMetaclass, object)):
             header = header.replace('?>', 'encoding=%s ?>' % encoding)
 
         if standalone:
-            standalone = header.replace('?>', 'standalone=yes')
+            standalone = header.replace('?>', 'standalone=yes ?>')
 
         return header
 
