@@ -393,10 +393,10 @@ class Model(with_metaclass(ModelMetaclass, object)):
         header = '<?xml version="1.0" ?>'
 
         if encoding is not None:
-            header = header.replace('?>', 'encoding=%s ?>' % encoding)
+            header = header.replace('?>', 'encoding="%s" ?>' % encoding)
 
         if standalone:
-            standalone = header.replace('?>', 'standalone=yes ?>')
+            header = header.replace('?>', 'standalone="yes" ?>')
 
         return header
 
