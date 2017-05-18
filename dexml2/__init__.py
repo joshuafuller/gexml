@@ -97,21 +97,28 @@ class XmlError(Error):
 class PARSE_DONE:
     """Constant returned by a Field when it has finished parsing."""
     pass
+
+
 class PARSE_MORE:
     """Constant returned by a Field when it wants additional nodes to parse."""
     pass
+
+
 class PARSE_SKIP:
     """Constant returned by a Field when it cannot parse the given node."""
     pass
+
+
 class PARSE_CHILDREN:
     """Constant returned by a Field to parse children from its container tag."""
     pass
+
 
 class Meta:
     """Class holding meta-information about a dexml.Model subclass.
 
     Each dexml.Model subclass has an attribute 'meta' which is an instance
-    of this class.  That instance holds information about how the model 
+    of this class.  That instance holds information about how the model
     corresponds to XML, such as its tagname, namespace, and error handling
     semantics.  You would not ordinarily create an instance of this class;
     instead let the ModelMetaclass create one automatically.
@@ -222,13 +229,20 @@ class ModelMetaclass(type):
 
 #  You can use this re to extract the encoding declaration from the XML
 #  document string.  Hopefully you won't have to, but you might need to...
-_XML_ENCODING_RE = re.compile("<\\?xml [^>]*encoding=[\"']([a-zA-Z0-9\\.\\-\\_]+)[\"'][^>]*?>")
+_XML_DECLARATION_RE = re.compile(
+    "<\\?xml(?P<xml_attributes>[^\\?>]+)\\?>",
+    re.IGNORECASE
+)
+_XML_ENCODING_RE = re.compile(
+    "encoding=[\"']*(?P<encoding>[^\s\"']+)[\"']*",
+    re.IGNORECASE
+)
 
 
 class Model(with_metaclass(ModelMetaclass, object)):
     """Base class for dexml Model objects.
 
-    Subclasses of Model represent a concrete type of object that can parsed 
+    Subclasses of Model represent a concrete type of object that can parsed
     from or rendered to an XML document.  The mapping to/from XML is controlled
     by two things:
 
@@ -301,7 +315,7 @@ class Model(with_metaclass(ModelMetaclass, object)):
 
     def _parse_children_ordered(self,node,fields,fields_found):
         """Parse the children of the given node using strict field ordering."""
-        cur_field_idx = 0 
+        cur_field_idx = 0
         for child in node.childNodes:
             idx = cur_field_idx
             #  If we successfully break out of this loop, one of our
@@ -374,8 +388,21 @@ class Model(with_metaclass(ModelMetaclass, object)):
                     err = "unknown attribute: %s" % (node.name,)
                     raise ParseError(err)
 
-    def render(self,encoding=None,fragment=False,pretty=False,nsmap=None):
-        """Produce XML from this model's instance data.
+    def _render_xml_header(self, encoding=None, standalone=False):
+        """Renders XML Header with given parameters."""
+        header = '<?xml version="1.0" ?>'
+
+        if encoding is not None:
+            header = header.replace('?>', 'encoding="%s" ?>' % encoding)
+
+        if standalone:
+            header = header.replace('?>', 'standalone="yes" ?>')
+
+        return header
+
+    def render(self, encoding=None, fragment=False, pretty=False, nsmap=None,
+               standalone=False):
+        """Produce XML from this Model's instance data.
 
         A unicode string will be returned if any of the objects contain
         unicode values; specifying the 'encoding' argument forces generation
@@ -384,35 +411,42 @@ class Model(with_metaclass(ModelMetaclass, object)):
         By default a complete XML document is produced, including the
         leading "<?xml>" declaration.  To generate an XML fragment set
         the 'fragment' argument to True.
+
+        :param standalone: Enable standalone XML.
+        :type standalone: bool
         """
-        if nsmap is None:
-            nsmap = {}
+        nsmap = nsmap or {}
         data = []
-        header = '<?xml version="1.0" ?>'
-        if encoding:
-            header = '<?xml version="1.0" encoding="%s" ?>' % (encoding,)
+        header = self._render_xml_header(encoding, standalone)
+
         if not fragment:
             data.append(header)
 
         data.extend(self._render(nsmap))
+
         xml = "".join(data)
+
         if pretty:
             xml = minidom.parseString(xml).toprettyxml()
             # Hack for removing the `<?xml version="1.0"?>` header that
             # minidom adds when pretty printing.
             line_break_position = xml.find('\n') + 1
             headless_xml = xml[line_break_position:]
+
             if fragment:
                 xml = headless_xml
             elif encoding:
                 # Minidom also removes the header (or just the `encoding` key)
                 # if it is present
                 xml = header + '\n' + headless_xml
+
         if encoding:
             xml = xml.encode(encoding)
+
         return xml
 
-    def irender(self,encoding=None,fragment=False,nsmap=None):
+    def irender(self, encoding=None, fragment=False, nsmap=None,
+                standalone=False):
         """Generator producing XML from this model's instance data.
 
         If any of the objects contain unicode values, the resulting output
@@ -423,17 +457,18 @@ class Model(with_metaclass(ModelMetaclass, object)):
         leading "<?xml>" declaration.  To generate an XML fragment set
         the 'fragment' argument to True.
         """
-        if nsmap is None:
-            nsmap = {}
+        nsmap = nsmap or {}
+        header = self._render_xml_header(encoding, standalone)
+
         if not fragment:
             if encoding:
-                decl = '<?xml version="1.0" encoding="%s" ?>' % (encoding,)
-                yield decl.encode(encoding)
+                yield header.encode(encoding)
             else:
-                yield '<?xml version="1.0" ?>'
+                yield header
+
         if encoding:
             for data in self._render(nsmap):
-                if isinstance(data,text_type):
+                if isinstance(data, text_type):
                     data = data.encode(encoding)
                 yield data
         else:
@@ -533,16 +568,21 @@ class Model(with_metaclass(ModelMetaclass, object)):
                     xml = minidom.parseString(xml)
                 except Exception as e:
                     raise XmlError(e)
-            elif isinstance(xml,text_type):
+            elif isinstance(xml, text_type):
                 try:
                     #  Try to grab the "encoding" attribute from the XML.
                     #  It probably won't exist, so default to utf8.
-                    encoding = _XML_ENCODING_RE.match(xml)
-                    if encoding is None:
-                        encoding = "utf8"
+                    xml_declaration = _XML_DECLARATION_RE.search(xml)
+                    xml_attributes = xml_declaration.group('xml_attributes')
+                    xml_encoding = _XML_ENCODING_RE.search(xml_attributes)
+
+                    if xml_encoding is None:
+                        encoding = 'utf8'
                     else:
-                        encoding = encoding.group(1)
+                        encoding = xml_encoding.group('encoding')
+
                     xml = minidom.parseString(xml.encode(encoding))
+
                 except Exception as e:
                     raise XmlError(e)
             elif hasattr(xml,"read"):
@@ -561,7 +601,7 @@ class Model(with_metaclass(ModelMetaclass, object)):
         return node
 
     @classmethod
-    def validate_xml_node(cls,node,tagname=None):
+    def validate_xml_node(cls, node, tagname=None):
         """Check that the given xml node is valid for this object.
 
         Here 'valid' means that it is the right tag, in the right
@@ -595,5 +635,3 @@ class Model(with_metaclass(ModelMetaclass, object)):
                 err = "Class '%s' got namespace '%s' (expected no namespace)"
                 err = err % (cls.__name__,node.namespaceURI,)
                 raise ParseError(err)
-
-
