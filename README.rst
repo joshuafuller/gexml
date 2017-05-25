@@ -1,7 +1,7 @@
 
 
-gexml:  a dead-simple Object-XML mapper for Python
-==================================================
+gexml: A dead-simple Object-XML mapper for Python
+=================================================
 
 Let's face it: xml is a fact of modern life.  I'd even go so far as to say
 that it's *good* at what is does.  But that doesn't mean it's easy to work
@@ -60,4 +60,3 @@ classes for more details:
   :Model:  the base class for objects that map into XML
   :Field:  the base class for individual model fields
   :Meta:   meta-information about how to parse/render a model
-
