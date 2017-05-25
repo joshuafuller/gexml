@@ -1,17 +1,24 @@
 """
 
-dexml.fields:  basic field type definitions for dexml
+gexml.fields:  basic field type definitions for gexml
 =====================================================
 
 """
 
-import dexml2
+import datetime
 import random
+
 from xml.sax.saxutils import escape, quoteattr
-from dexml2.compat import iteritems, string_types, text_type
+
+import gexml
+
+from gexml.compat import iteritems, string_types, text_type
+from gexml.utils import strptime_ISO_8601, ISO_8601_UTC
+
 
 #  Global counter tracking the order in which fields are declared.
 _order_counter = 0
+
 
 class _AttrBucket:
     """A simple class used only to hold attributes."""
@@ -19,10 +26,10 @@ class _AttrBucket:
 
 
 class Field(object):
-    """Base class for all dexml Field classes.
+    """Base class for all gexml Field classes.
 
     Field classes are responsible for parsing and rendering individual
-    components to the XML.  They also act as descriptors on dexml Model
+    components to the XML.  They also act as descriptors on gexml Model
     instances, to get/set the corresponding properties.
 
     Each field instance will magically be given the following properties:
@@ -37,7 +44,7 @@ class Field(object):
       * parse_child_node:    parse into out of an XML child node
       * render_attributes:   render XML for node attributes
       * render_children:     render XML for child nodes
-      
+
     """
 
     class arguments:
@@ -63,7 +70,7 @@ class Field(object):
         """Parse any attributes for this field from the given list.
 
         This method will be called with the Model instance being parsed and
-        a list of attribute nodes from its XML tag.  Any attributes of 
+        a list of attribute nodes from its XML tag.  Any attributes of
         interest to this field should be processed, and a list of the unused
         attribute nodes returned.
         """
@@ -85,7 +92,7 @@ class Field(object):
 
         Any other return value will be taken as a parse error.
         """
-        return dexml2.PARSE_SKIP
+        return gexml.PARSE_SKIP
 
     def parse_done(self,obj):
         """Finalize parsing for the given object.
@@ -215,20 +222,20 @@ class Value(Field):
 
     def parse_child_node(self,obj,node):
         if not self.tagname:
-            return dexml2.PARSE_SKIP
+            return gexml.PARSE_SKIP
         if self.tagname == ".":
             node = node.parentNode
         else:
             if not self._check_tagname(node,self.tagname):
-                return dexml2.PARSE_SKIP
+                return gexml.PARSE_SKIP
         vals = []
         #  Merge all text nodes into a single value
         for child in node.childNodes:
             if child.nodeType not in (child.TEXT_NODE,child.CDATA_SECTION_NODE):
-                raise dexml2.ParseError("non-text value node")
+                raise gexml.ParseError("non-text value node")
             vals.append(child.nodeValue)
         self.__set__(obj,self.parse_value("".join(vals)))
-        return dexml2.PARSE_DONE
+        return gexml.PARSE_DONE
 
     def render_attributes(self,obj,val,nsmap):
         if val is not None and val is not self.default and self.attrname:
@@ -354,7 +361,7 @@ class Boolean(Value):
 
     The strings corresponding to false are 'no', 'off', 'false' and '0',
     compared case-insensitively.  Note that this means an empty tag or
-    attribute is considered True - this is usually what you want, since 
+    attribute is considered True - this is usually what you want, since
     a completely missing attribute or tag can be interpreted as False.
 
     To enforce that the presence of a tag indicates True and the absence of
@@ -397,6 +404,32 @@ class Boolean(Value):
         return "true"
 
 
+class DateTime(Value):
+    """
+    This datatype describes instances identified by the combination of a date
+    and a time. Its value space is described as a combination of date and
+    time of day in Chapter 5.4 of ISO 8601. Its lexical space is the
+    extended format:
+    [-]CCYY-MM-DDThh:mm:ss[Z|(+|-)hh:mm]
+    """
+    def parse_value(self, val):
+        # wtf is negative datetime? the xml spec specifies an optional [-]
+        # but lets just ignore that for now...
+        if val.startswith('-'):
+            return strptime_ISO_8601(val[1:])
+        else:
+            return strptime_ISO_8601(val)
+
+    def render_value(self, val):
+        """
+        Times will be returned as utc times. if you care about timezones
+        you'll need to add some tzinfo implementation and custom formatting.
+        """
+        if not isinstance(val, datetime.datetime):
+            raise TypeError('DateTime Field expects a datetime.datetime object')
+        return val.strftime(ISO_8601_UTC)
+
+
 class Model(Field):
     """Field subclass referencing another Model instance.
 
@@ -434,10 +467,10 @@ class Model(Field):
         except KeyError:
             self.__dict__['typeclass'] = self._load_typeclass()
             return self.__dict__['typeclass']
- 
+
     def _load_typeclass(self):
         typ = self.type
-        if isinstance(typ, dexml2.ModelMetaclass):
+        if isinstance(typ, gexml.ModelMetaclass):
             return typ
         if typ is None:
             typ = self.field_name
@@ -445,16 +478,16 @@ class Model(Field):
         if isinstance(typ,string_types):
             if self.model_class.meta.namespace:
                 ns = self.model_class.meta.namespace
-                typeclass = dexml2.ModelMetaclass.find_class(typ, ns)
+                typeclass = gexml.ModelMetaclass.find_class(typ, ns)
             if typeclass is None:
-                typeclass = dexml2.ModelMetaclass.find_class(typ, None)
+                typeclass = gexml.ModelMetaclass.find_class(typ, None)
             if typeclass is None:
                 raise ValueError("Unknown Model class: %s" % (typ,))
         else:
             (ns,typ) = typ
-            if isinstance(typ, dexml2.ModelMetaclass):
+            if isinstance(typ, gexml.ModelMetaclass):
                 return typ
-            typeclass = dexml2.ModelMetaclass.find_class(typ, ns)
+            typeclass = gexml.ModelMetaclass.find_class(typ, ns)
             if typeclass is None:
                 raise ValueError("Unknown Model class: (%s,%s)" % (ns,typ))
         return typeclass
@@ -463,12 +496,12 @@ class Model(Field):
         typeclass = self.typeclass
         try:
             typeclass.validate_xml_node(node, self.tagname)
-        except dexml2.ParseError:
-            return dexml2.PARSE_SKIP
+        except gexml.ParseError:
+            return gexml.PARSE_SKIP
         else:
             inst = typeclass.parse(node, self.tagname)
             self.__set__(obj,inst)
-            return dexml2.PARSE_DONE
+            return gexml.PARSE_DONE
 
     def render_attributes(self,obj,val,nsmap):
         return []
@@ -557,35 +590,35 @@ class List(Field):
             val = super(List,self).__get__(obj)
             if val is None:
                 if node.nodeType != node.ELEMENT_NODE:
-                    return dexml2.PARSE_SKIP
+                    return gexml.PARSE_SKIP
                 elif node.tagName == self.tagname:
                     self.__set__(obj,[])
-                    return dexml2.PARSE_CHILDREN
+                    return gexml.PARSE_CHILDREN
                 else:
-                    return dexml2.PARSE_SKIP
+                    return gexml.PARSE_SKIP
         #  Now we just parse each child node.
         tmpobj = _AttrBucket()
         res = self.field.parse_child_node(tmpobj,node)
-        if res is dexml2.PARSE_MORE:
+        if res is gexml.PARSE_MORE:
             raise ValueError("items in a list cannot return PARSE_MORE")
-        if res is dexml2.PARSE_DONE:
+        if res is gexml.PARSE_DONE:
             items = self.__get__(obj)
             val = getattr(tmpobj,self.field_name)
             items.append(val)
-            return dexml2.PARSE_MORE
+            return gexml.PARSE_MORE
         else:
-            return dexml2.PARSE_SKIP
+            return gexml.PARSE_SKIP
 
     def parse_done(self,obj):
         items = self.__get__(obj)
         if self.minlength is not None and len(items) < self.minlength:
-            raise dexml2.ParseError("Field '%s': not enough items" % (self.field_name,))
+            raise gexml.ParseError("Field '%s': not enough items" % (self.field_name,))
         if self.maxlength is not None and len(items) > self.maxlength:
-            raise dexml2.ParseError("Field '%s': too many items" % (self.field_name,))
+            raise gexml.ParseError("Field '%s': too many items" % (self.field_name,))
 
     def render_children(self,obj,items,nsmap):
         #  Create a generator that yields child data chunks, and validates
-        #  the number of items in the list as it goes.  It allows any 
+        #  the number of items in the list as it goes.  It allows any
         #  iterable to be passed in, not just a list.
         def child_chunks():
             num_items = 0
@@ -593,12 +626,12 @@ class List(Field):
                 num_items += 1
                 if self.maxlength is not None and num_items > self.maxlength:
                     msg = "Field '%s': too many items" % (self.field_name,)
-                    raise dexml2.RenderError(msg)
+                    raise gexml.RenderError(msg)
                 for data in self.field.render_children(obj,item,nsmap):
                     yield data
             if self.minlength is not None and num_items < self.minlength:
                 msg = "Field '%s': not enough items" % (self.field_name,)
-                raise dexml2.RenderError(msg)
+                raise gexml.RenderError(msg)
         chunks = child_chunks()
         #  Render each chunk, but suppress the wrapper tag if there's no data.
         try:
@@ -727,43 +760,43 @@ class Dict(Field):
             val = super(Dict,self).__get__(obj)
             if val is None:
                 if node.nodeType != node.ELEMENT_NODE:
-                    return dexml2.PARSE_SKIP
+                    return gexml.PARSE_SKIP
                 elif node.tagName == self.tagname:
                     self.__get__(obj)
-                    return dexml2.PARSE_CHILDREN
+                    return gexml.PARSE_CHILDREN
                 else:
-                    return dexml2.PARSE_SKIP
+                    return gexml.PARSE_SKIP
         #  Now we just parse each child node.
         tmpobj = _AttrBucket()
         res = self.field.parse_child_node(tmpobj, node)
-        if res is dexml2.PARSE_MORE:
+        if res is gexml.PARSE_MORE:
             raise ValueError("items in a dict cannot return PARSE_MORE")
-        if res is dexml2.PARSE_DONE:
+        if res is gexml.PARSE_DONE:
             items = self.__get__(obj)
             val = getattr(tmpobj, self.field_name)
             try:
                 key = getattr(val, self.key)
             except AttributeError:
-                raise dexml2.ParseError("Key field '%s' required but not found in dict value" % (self.key,))
+                raise gexml.ParseError("Key field '%s' required but not found in dict value" % (self.key,))
             if self.unique and key in items:
-                raise dexml2.ParseError("Key '%s' already exists in dict" % (key,))
+                raise gexml.ParseError("Key '%s' already exists in dict" % (key,))
             items[key] = val
-            return dexml2.PARSE_MORE
+            return gexml.PARSE_MORE
         else:
-            return dexml2.PARSE_SKIP
+            return gexml.PARSE_SKIP
 
     def parse_done(self, obj):
         items = self.__get__(obj)
         if self.minlength is not None and len(items) < self.minlength:
-            raise dexml2.ParseError("Field '%s': not enough items" % (self.field_name,))
+            raise gexml.ParseError("Field '%s': not enough items" % (self.field_name,))
         if self.maxlength is not None and len(items) > self.maxlength:
-            raise dexml2.ParseError("Field '%s': too many items" % (self.field_name,))
+            raise gexml.ParseError("Field '%s': too many items" % (self.field_name,))
 
     def render_children(self, obj, items, nsmap):
         if self.minlength is not None and len(items) < self.minlength:
-            raise dexml2.RenderError("Field '%s': not enough items" % (self.field_name,))
+            raise gexml.RenderError("Field '%s': not enough items" % (self.field_name,))
         if self.maxlength is not None and len(items) > self.maxlength:
-            raise dexml2.RenderError("too many items")
+            raise gexml.RenderError("too many items")
         if self.tagname:
             children = "".join(data for item in items.values() for data in self.field.render_children(obj,item,nsmap))
             if not children:
@@ -800,17 +833,17 @@ class Choice(Field):
             field.field_name = self.field_name
             field.model_class = self.model_class
             res = field.parse_child_node(obj,node)
-            if res is dexml2.PARSE_MORE:
+            if res is gexml.PARSE_MORE:
                 raise ValueError("items in a Choice cannot return PARSE_MORE")
-            if res is dexml2.PARSE_DONE:
-                return dexml2.PARSE_DONE
+            if res is gexml.PARSE_DONE:
+                return gexml.PARSE_DONE
         else:
-            return dexml2.PARSE_SKIP
+            return gexml.PARSE_SKIP
 
     def render_children(self,obj,item,nsmap):
         if item is None:
             if self.required:
-                raise dexml2.RenderError("Field '%s': required field is missing" % (self.field_name,))
+                raise gexml.RenderError("Field '%s': required field is missing" % (self.field_name,))
         else:
             for data in item._render(nsmap=nsmap):
                 yield data
@@ -826,7 +859,7 @@ class XmlNode(Field):
         if isinstance(value,string_types):
             if isinstance(value,text_type) and self.encoding:
                 value = value.encode(self.encoding)
-            doc = dexml2.minidom.parseString(value)
+            doc = gexml.minidom.parseString(value)
             value = doc.documentElement
         if value is not None and value.namespaceURI is not None:
             nsattr = "xmlns"
@@ -838,11 +871,10 @@ class XmlNode(Field):
     def parse_child_node(self,obj,node):
         if self.tagname is None or self._check_tagname(node,self.tagname):
             self.__set__(obj,node)
-            return dexml2.PARSE_DONE
-        return dexml2.PARSE_SKIP
+            return gexml.PARSE_DONE
+        return gexml.PARSE_SKIP
 
     @classmethod
     def render_children(cls,obj,val,nsmap):
         if val is not None:
             yield val.toxml()
-

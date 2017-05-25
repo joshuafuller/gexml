@@ -1,9 +1,11 @@
 """
     Python 2 and 3 compatibility adapted from six.py
 """
+
 import sys
 import operator
 import types
+
 
 PY3 = sys.version_info[0] == 3
 
