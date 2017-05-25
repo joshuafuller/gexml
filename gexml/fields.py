@@ -6,14 +6,19 @@ gexml.fields:  basic field type definitions for gexml
 """
 
 import datetime
-import gexml
 import random
+
 from xml.sax.saxutils import escape, quoteattr
+
+import gexml
+
 from gexml.compat import iteritems, string_types, text_type
 from gexml.utils import strptime_ISO_8601, ISO_8601_UTC
 
+
 #  Global counter tracking the order in which fields are declared.
 _order_counter = 0
+
 
 class _AttrBucket:
     """A simple class used only to hold attributes."""

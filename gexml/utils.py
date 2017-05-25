@@ -5,8 +5,8 @@ gexml.utils:  misc utils
 
 """
 
-import re
 import datetime
+import re
 
 
 ISO_8601_UTC = "%Y-%m-%dT%H:%M:%S.%fZ"
@@ -38,7 +38,7 @@ def strptime_ISO_8601(time_str):
     # use a capture group to keep the delimiter
     split_timestamp = re.split(r"[+|-]", conformed_timestamp)
     main_timestamp = split_timestamp[0]
-    
+
     if len(split_timestamp) == 3:
         sign = split_timestamp[1]
         offset = split_timestamp[2]

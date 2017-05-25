@@ -6,6 +6,7 @@
 #
 
 import sys
+
 setup_kwds = {}
 
 
@@ -31,6 +32,7 @@ else:
 info = {}
 src = open("gexml/__init__.py")
 lines = []
+
 for ln in src:
     lines.append(ln)
     if "__version__" in ln:
@@ -44,11 +46,11 @@ exec("".join(lines),info)
 
 NAME = "gexml"
 VERSION = info["__version__"]
-DESCRIPTION = "a dead-simple Object-XML mapper for Python"
+DESCRIPTION = "A dead-simple Object-XML mapper for Python"
 LONG_DESC = info["__doc__"]
-AUTHOR = "Mike Nelson"
-AUTHOR_EMAIL = "mike@realrunners.com"
-URL="https://github.com/realrunner/gexml"
+AUTHOR = "Greg Albrecht"
+AUTHOR_EMAIL = "oss@undef.net"
+URL = "https://github.com/ampledata/gexml"
 LICENSE = "MIT"
 KEYWORDS = "xml"
 CLASSIFIERS = [
@@ -70,16 +72,17 @@ CLASSIFIERS = [
     "Topic :: Text Processing :: Markup :: XML",
 ]
 
-setup(name=NAME,
-      version=VERSION,
-      author=AUTHOR,
-      author_email=AUTHOR_EMAIL,
-      url=URL,
-      description=DESCRIPTION,
-      long_description=LONG_DESC,
-      license=LICENSE,
-      keywords=KEYWORDS,
-      packages=[NAME],
-      classifiers=CLASSIFIERS,
-      **setup_kwds
-     )
+setup(
+    name=NAME,
+    version=VERSION,
+    author=AUTHOR,
+    author_email=AUTHOR_EMAIL,
+    url=URL,
+    description=DESCRIPTION,
+    long_description=LONG_DESC,
+    license=LICENSE,
+    keywords=KEYWORDS,
+    packages=[NAME],
+    classifiers=CLASSIFIERS,
+    **setup_kwds
+)

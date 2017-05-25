@@ -4,15 +4,17 @@
 
 """
 
-import sys
+import doctest
 import os
 import os.path
+import sys
 import unittest
-import doctest
+
 from xml.dom import minidom
 from io import StringIO
 
 import gexml
+
 from gexml import fields
 
 
@@ -32,7 +34,7 @@ def model_fields_equal(m1,m2):
         elif v1 != v2:
             return False
     return True
-          
+
 
 
 class TestDexmlDocstring(unittest.TestCase):
@@ -356,7 +358,7 @@ class TestDexml(unittest.TestCase):
 
         self.assertRaises(gexml.ParseError, pets.parse, "<pets><pet name='riley' species='fish' /></pets>")
         self.assertRaises(gexml.ParseError, pets.parse, "<pets><person name='riley' age='2' /></pets>")
-        
+
         def assign(val):
             p.pet1 = val
         self.assertRaises(ValueError, assign, person(name = 'ryan', age = 26))
@@ -681,7 +683,7 @@ class TestDexml(unittest.TestCase):
                 return gexml.PARSE_MORE
         class SaneChoice(gexml.Model):
             item = fields.Choice(GreedyModel("SaneChoice"))
-            
+
         self.assertRaises(ValueError,SaneChoice.parse,"<SaneChoice><SaneChoice /></SaneChoice>")
 
 
@@ -1103,4 +1105,3 @@ class TestListField(unittest.TestCase):
         o = obj()
         o.fs = FF(name="N1")
         self.assertEqual(o.render(fragment=True), "<obj><subFF><name>N1</name></subFF></obj>")
-

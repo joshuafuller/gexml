@@ -1,7 +1,7 @@
 """
 
-gexml:  a dead-simple Object-XML mapper for Python
-==================================================
+gexml: A dead-simple Object-XML mapper for Python
+=================================================
 
 Let's face it: xml is a fact of modern life.  I'd even go so far as to say
 that it's *good* at what is does.  But that doesn't mean it's easy to work
@@ -63,16 +63,18 @@ classes for more details:
 
 """
 
-__ver_major__ = 0
-__ver_minor__ = 5
-__ver_patch__ = 3
+__ver_major__ = 1
+__ver_minor__ = 0
+__ver_patch__ = 0
 __ver_sub__ = ""
 __version__ = "%d.%d.%d%s" % (__ver_major__,__ver_minor__,__ver_patch__,__ver_sub__)
 
 
 import re
 import copy
+
 from xml.dom import minidom
+
 from gexml.compat import with_metaclass, iteritems, text_type
 from gexml import fields
 
@@ -81,13 +83,16 @@ class Error(Exception):
     """Base exception class for the gexml module."""
     pass
 
+
 class ParseError(Error):
     """Exception raised when XML could not be parsed into objects."""
     pass
 
+
 class RenderError(Error):
     """Exception raised when object could not be rendered into XML."""
     pass
+
 
 class XmlError(Error):
     """Exception raised to encapsulate errors from underlying XML parser."""
