@@ -1,5 +1,5 @@
 #
-#  This is the dexml setuptools script.
+#  This is the gexml setuptools script.
 #  Originally developed by Ryan Kelly, 2009.
 #
 #  This script is placed in the public domain.
@@ -19,7 +19,7 @@ except ImportError:
         raise RuntimeError("python3 support requires setuptools")
     from distutils.core import setup
 else:
-    setup_kwds["test_suite"] = "dexml2.test"
+    setup_kwds["test_suite"] = "gexml.test"
     if sys.version_info > (3,):
         setup_kwds["use_2to3"] = False
 
@@ -29,7 +29,7 @@ else:
 #  we explicitly read the file contents up to the end of the version
 #  declaration, then exec it ourselves.
 info = {}
-src = open("dexml2/__init__.py")
+src = open("gexml/__init__.py")
 lines = []
 for ln in src:
     lines.append(ln)
@@ -42,13 +42,13 @@ for ln in src:
 exec("".join(lines),info)
 
 
-NAME = "dexml2"
+NAME = "gexml"
 VERSION = info["__version__"]
 DESCRIPTION = "a dead-simple Object-XML mapper for Python"
 LONG_DESC = info["__doc__"]
 AUTHOR = "Mike Nelson"
 AUTHOR_EMAIL = "mike@realrunners.com"
-URL="https://github.com/realrunner/dexml"
+URL="https://github.com/realrunner/gexml"
 LICENSE = "MIT"
 KEYWORDS = "xml"
 CLASSIFIERS = [
