@@ -577,9 +577,12 @@ class Model(with_metaclass(ModelMetaclass, object)):
                 try:
                     #  Try to grab the "encoding" attribute from the XML.
                     #  It probably won't exist, so default to utf8.
-                    xml_declaration = _XML_DECLARATION_RE.search(xml)
-                    xml_attributes = xml_declaration.group('xml_attributes')
-                    xml_encoding = _XML_ENCODING_RE.search(xml_attributes)
+                    try:
+                       xml_declaration = _XML_DECLARATION_RE.search(xml)
+                       xml_attributes = xml_declaration.group('xml_attributes')
+                       xml_encoding = _XML_ENCODING_RE.search(xml_attributes)
+                    except AttributeError:
+                       xml_encoding = _XML_ENCODING_RE.search(xml)
 
                     if xml_encoding is None:
                         encoding = 'utf8'
