@@ -2,8 +2,8 @@
 #
 # Source:: https://github.com/ampledata/gexml
 # Author:: Greg Albrecht <oss@undef.net>
-# Copyright:: Copyright 2017 Greg Albrecht and Contributors
-# License:: Apache License, Version 2.0
+# Copyright:: Copyright (c) 2009-2011 Ryan Kelly
+# License:: MIT License
 #
 
 

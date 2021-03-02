@@ -63,20 +63,13 @@ classes for more details:
 
 """
 
-__ver_major__ = 1
-__ver_minor__ = 1
-__ver_patch__ = 0
-__ver_sub__ = ""
-__version__ = "%d.%d.%d%s" % (__ver_major__,__ver_minor__,__ver_patch__,__ver_sub__)
-
-
-import re
 import copy
+import re
 
 from xml.dom import minidom
 
-from gexml.compat import with_metaclass, iteritems, text_type
 from gexml import fields
+from gexml.compat import with_metaclass, iteritems, text_type
 
 
 class Error(Exception):

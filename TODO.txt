@@ -1,2 +1,0 @@
-
-* type-checking or type-coercing on Field.__set__
